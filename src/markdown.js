@@ -1,5 +1,5 @@
-// src/lib/transcript/markdown.js
-import { convertEmoji } from "./emojiConvert.js";
+// src/markdown.js
+import { convertEmoji } from "./emoji.js";
 
 function mergeQuoteLines(content) {
   const lines = content.split("\n");

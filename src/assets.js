@@ -1,8 +1,8 @@
-// src/lib/transcript/assets.js
+// src/assets.js
 import { MessageType } from "discord.js";
-import { fillOut, escapeHtml } from "./fillOut.js";
-import { convertEmoji } from "./emojiConvert.js";
-import { DiscordUtils } from "./discordUtils.js";
+import { fillOut, escapeHtml } from "./fill-out.js";
+import { convertEmoji } from "./emoji.js";
+import { DiscordUtils } from "./utils.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_MARKDOWN, PARSE_MODE_EMBED,
   PARSE_MODE_SPECIAL_EMBED, PARSE_MODE_EMOJI,

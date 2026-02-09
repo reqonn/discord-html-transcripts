@@ -1,4 +1,4 @@
-// src/lib/transcript/fillOut.js
+// src/fill-out.js
 import { parseMention } from "./mention.js";
 import { parseMarkdown } from "./markdown.js";
 import {

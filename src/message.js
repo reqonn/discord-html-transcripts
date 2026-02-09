@@ -1,7 +1,7 @@
-// src/lib/transcript/message.js
+// src/message.js
 import { MessageType } from "discord.js";
-import { fillOut, escapeHtml } from "./fillOut.js";
-import { DiscordUtils } from "./discordUtils.js";
+import { fillOut, escapeHtml } from "./fill-out.js";
+import { DiscordUtils } from "./utils.js";
 import { buildAttachment, buildEmbed, buildReaction, buildComponent } from "./assets.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_MARKDOWN, PARSE_MODE_REFERENCE,

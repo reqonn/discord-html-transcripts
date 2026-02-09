@@ -1,4 +1,4 @@
-// src/lib/transcript/mention.js
+// src/mention.js
 import { parseMarkdown } from "./markdown.js";
 
 let _bot = null;

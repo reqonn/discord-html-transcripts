@@ -1,9 +1,9 @@
-// src/lib/transcript/index.js
-import { fillOut, escapeHtml } from "./fillOut.js";
+// src/index.js
+import { fillOut, escapeHtml } from "./fill-out.js";
 import { gatherMessages } from "./message.js";
 import { resetMenuDivId } from "./assets.js";
 import { passBot } from "./mention.js";
-import { DiscordUtils } from "./discordUtils.js";
+import { DiscordUtils } from "./utils.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_HTML_SAFE,
   total, fancy_time, channel_topic, channel_subject, meta_data_temp,

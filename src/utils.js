@@ -1,4 +1,4 @@
-// src/lib/transcript/discordUtils.js
+// src/utils.js
 export const DiscordUtils = {
   logo: "https://cdn.jsdelivr.net/gh/mahtoid/DiscordUtils@master/discord-logo.svg",
   default_avatar: "https://cdn.jsdelivr.net/gh/mahtoid/DiscordUtils@master/discord-default.png",

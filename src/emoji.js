@@ -1,4 +1,4 @@
-// src/lib/transcript/emojiConvert.js
+// src/emoji.js
 const CDN_FMT = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/assets/72x72/{codepoint}.png";
 
 const EMOJI_RE = /\p{Extended_Pictographic}(\u200d\p{Extended_Pictographic}|\ufe0f)*/gu;

@@ -1,4 +1,4 @@
-// src/lib/transcript/templates.js
+// src/templates.js
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
