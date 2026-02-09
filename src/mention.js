@@ -1,5 +1,4 @@
 // src/mention.js
-import { parseMarkdown } from "./markdown.js";
 
 let _bot = null;
 
@@ -120,10 +119,7 @@ function slashCommandMention(content) {
   return content;
 }
 
-export async function parseMention(content, guild) {
-  content = escapeMentions(content);
-  content = escapeMentions(content);
-  content = unescapeMentions(content);
+export function parseMention(content, guild) {
   content = channelMention(content, guild);
   content = memberMention(content, guild);
   content = roleMention(content, guild);

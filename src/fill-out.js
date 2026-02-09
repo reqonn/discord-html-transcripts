@@ -20,27 +20,27 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
-export async function fillOut(guild, base, replacements) {
+export function fillOut(guild, base, replacements) {
   for (let r of replacements) {
     if (r.length === 2) r = [r[0], r[1], PARSE_MODE_MARKDOWN];
 
     const [key, rawValue, mode] = r;
     let v = String(rawValue ?? "").trim();
 
-    if (mode !== PARSE_MODE_NONE) {
-      v = await parseMention(v, guild);
+    if (mode !== PARSE_MODE_NONE && mode !== PARSE_MODE_EMOJI && mode !== PARSE_MODE_HTML_SAFE) {
+      v = parseMention(v, guild);
     }
 
     if (mode === PARSE_MODE_MARKDOWN) {
-      v = await parseMarkdown(v, "standard");
+      v = parseMarkdown(v, "standard");
     } else if (mode === PARSE_MODE_EMBED) {
-      v = await parseMarkdown(v, "embed");
+      v = parseMarkdown(v, "embed");
     } else if (mode === PARSE_MODE_SPECIAL_EMBED) {
-      v = await parseMarkdown(v, "special_embed");
+      v = parseMarkdown(v, "special_embed");
     } else if (mode === PARSE_MODE_REFERENCE) {
-      v = await parseMarkdown(v, "reference");
+      v = parseMarkdown(v, "reference");
     } else if (mode === PARSE_MODE_EMOJI) {
-      v = await parseMarkdown(v, "emoji");
+      v = parseMarkdown(v, "emoji");
     } else if (mode === PARSE_MODE_HTML_SAFE) {
       v = escapeHtml(v);
       v = JSON.stringify(v).slice(1, -1);

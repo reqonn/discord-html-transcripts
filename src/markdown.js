@@ -261,7 +261,7 @@ function parseDiscordEmoji(content) {
   return content;
 }
 
-export async function parseMarkdown(content, flow = "standard") {
+export function parseMarkdown(content, flow = "standard") {
   if (flow === "emoji") {
     return parseDiscordEmoji(content);
   }
