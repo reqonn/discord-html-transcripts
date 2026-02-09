@@ -1,0 +1,18 @@
+{
+  "name": "discord-html-transcripts",
+  "version": "1.0.0",
+  "description": "Discord chat transcript generator for discord.js v14 — Node.js port of DiscordChatExporterPy",
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "keywords": ["discord", "transcript", "chat", "export", "html"],
+  "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "peerDependencies": {
+    "discord.js": "^14.0.0"
+  }
+}
