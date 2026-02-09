@@ -151,5 +151,5 @@ export async function createTranscript(channel, options = {}) {
     ["CHANNEL_NAME_SAFE", escapeHtml(channel.name), PARSE_MODE_HTML_SAFE],
   ]);
 
-  return { html, messageCount: messages.length };
+  return { html, messageCount: messages.length, metaData };
 }
