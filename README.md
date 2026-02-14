@@ -7,7 +7,7 @@ Generates beautiful HTML transcripts of Discord channels with full support for m
 ## Installation
 
 ```bash
-npm install github:YourUsername/discord-html-transcripts
+npm install github:reqonn/discord-html-transcripts
 ```
 
 ## Usage
