@@ -151,6 +151,7 @@ export async function createTranscript(channel, options = {}) {
   const channelCreatedAt = militaryTime
     ? channel.createdAt.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" })
     : channel.createdAt.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true, timeZone: "UTC" });
+  const channelCreatedAtIso = channel.createdAt.toISOString();
 
   // Channel topic
   const rawTopic = channel.topic || "";
@@ -191,6 +192,7 @@ export async function createTranscript(channel, options = {}) {
     ["DATE_TIME", timeNow],
     ["SUBJECT", subject, PARSE_MODE_NONE],
     ["CHANNEL_CREATED_AT", channelCreatedAt, PARSE_MODE_NONE],
+    ["CHANNEL_CREATED_AT_ISO", channelCreatedAtIso, PARSE_MODE_NONE],
     ["CHANNEL_TOPIC", channelTopicHtml, PARSE_MODE_NONE],
     ["CHANNEL_ID", String(channel.id), PARSE_MODE_NONE],
     ["MESSAGE_PARTICIPANTS", String(Object.keys(metaData).length), PARSE_MODE_NONE],

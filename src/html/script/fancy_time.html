@@ -42,6 +42,16 @@ for (var j = 0; j < shortStamps.length; j++) {
     shortStamps[j].setAttribute('data-timestamp', sLocal.format(fullFormat));
 }
 
+var summaryChannelCreated = document.getElementsByClassName('summary__channel-created');
+for (var m = 0; m < summaryChannelCreated.length; m++) {
+    var cIso = summaryChannelCreated[m].getAttribute('data-iso');
+    if (!cIso) continue;
+    var cLocal = dayjs.utc(cIso).tz(localTz);
+    if (!cLocal.isValid()) continue;
+    summaryChannelCreated[m].innerText = cLocal.format("DD MMM YYYY, HH:mm:ss");
+    summaryChannelCreated[m].setAttribute('data-timestamp', cLocal.format(fullFormat));
+}
+
 var unixStamps = document.getElementsByClassName('unix-timestamp');
 for (var k = 0; k < unixStamps.length; k++) {
     var raw = unixStamps[k].getAttribute('raw-content') || '';
