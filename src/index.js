@@ -6,18 +6,32 @@ import { passBot } from "./mention.js";
 import { DiscordUtils } from "./utils.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_HTML_SAFE,
-  total, fancy_time, channel_topic, channel_subject, meta_data_temp,
+  total, fancy_time, channel_topic, channel_subject,
 } from "./templates.js";
 
 const IMAGE_TIMEOUT_MS = 5000;
 const MAX_CONCURRENT_DOWNLOADS = 10;
+const MAX_INLINE_IMAGE_COUNT = 24;
+const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_INLINE_IMAGE_TOTAL_BYTES = 8 * 1024 * 1024;
 
-// Regex to find image URLs in src/href attributes (Discord CDN + media proxy)
-const IMAGE_URL_RE = /(?:src|href)=["'](https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/[^"']+\.(?:png|jpg|jpeg|gif|webp)(?:\?[^"']*)?)["']/gi;
+const IMAGE_URL_RE = /https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/[^"'\s>]+/gi;
 
 function getContentType(ext) {
   const map = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
   return map[ext] || "image/png";
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function replaceImageSrc(html, url, dataUrl) {
+  const escapedUrl = escapeRegex(url);
+  return html.replace(
+    new RegExp(`(src=["'])${escapedUrl}(["'])`, "g"),
+    `$1${dataUrl}$2`
+  );
 }
 
 async function downloadAsBase64(url) {
@@ -26,10 +40,17 @@ async function downloadAsBase64(url) {
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
+    const contentLength = Number(res.headers.get("content-length") || 0);
+    if (contentLength && contentLength > MAX_INLINE_IMAGE_BYTES) return null;
     const buffer = Buffer.from(await res.arrayBuffer());
+    if (!buffer.length || buffer.length > MAX_INLINE_IMAGE_BYTES) return null;
     const ext = url.split("?")[0].split(".").pop().toLowerCase();
     const mime = getContentType(ext);
-    return `data:${mime};base64,${buffer.toString("base64")}`;
+    return {
+      url,
+      bytes: buffer.length,
+      dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
+    };
   } catch {
     return null;
   } finally {
@@ -38,35 +59,29 @@ async function downloadAsBase64(url) {
 }
 
 async function embedImages(html) {
-  // Collect unique URLs
-  const urls = new Set();
-  let match;
-  while ((match = IMAGE_URL_RE.exec(html)) !== null) {
-    urls.add(match[1]);
-  }
-  if (!urls.size) return html;
+  const urlList = [...new Set(html.match(IMAGE_URL_RE) ?? [])].slice(0, MAX_INLINE_IMAGE_COUNT);
+  if (!urlList.length) return html;
 
-  // Download in batches to limit concurrency
-  const urlList = [...urls];
-  const dataUris = new Map();
+  const replacements = [];
+  let totalInlinedBytes = 0;
 
   for (let i = 0; i < urlList.length; i += MAX_CONCURRENT_DOWNLOADS) {
     const batch = urlList.slice(i, i + MAX_CONCURRENT_DOWNLOADS);
-    const results = await Promise.all(batch.map(async (url) => {
-      const dataUri = await downloadAsBase64(url);
-      return { url, dataUri };
-    }));
-    for (const { url, dataUri } of results) {
-      if (dataUri) dataUris.set(url, dataUri);
+    const results = await Promise.all(batch.map((url) => downloadAsBase64(url)));
+    for (const result of results) {
+      if (!result) continue;
+      if (totalInlinedBytes + result.bytes > MAX_INLINE_IMAGE_TOTAL_BYTES) continue;
+      replacements.push(result);
+      totalInlinedBytes += result.bytes;
     }
   }
 
-  // Replace URLs with data URIs
-  for (const [url, dataUri] of dataUris) {
-    html = html.replaceAll(url, dataUri);
+  let updatedHtml = html;
+  for (const { url, dataUrl } of replacements) {
+    updatedHtml = replaceImageSrc(updatedHtml, url, dataUrl);
   }
 
-  return html;
+  return updatedHtml;
 }
 
 /**
@@ -130,35 +145,7 @@ export async function createTranscript(channel, options = {}) {
     ? now.toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false, timeZone: "UTC" })
     : now.toLocaleString("en-GB", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true, timeZone: "UTC" });
 
-  let metaDataHtml = "";
-  for (const [userId, data] of Object.entries(metaData)) {
-    const createdAt = data.createdAt
-      ? new Date(data.createdAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
-      : "Unknown";
-    const joinedAt = data.joinedAt
-      ? new Date(data.joinedAt).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })
-      : "Unknown";
-
-    const nameStr = String(data.name);
-    const discrimMatch = nameStr.match(/#(\d{4})$/);
-    const username = discrimMatch ? nameStr.slice(0, -5) : nameStr;
-    const discrim = discrimMatch ? discrimMatch[1] : "";
-
-    metaDataHtml += await fillOut(guild, meta_data_temp, [
-      ["USER_ID", userId, PARSE_MODE_NONE],
-      ["USERNAME", username, PARSE_MODE_NONE],
-      ["DISCRIMINATOR", discrim],
-      ["BOT", data.botTag, PARSE_MODE_NONE],
-      ["CREATED_AT", createdAt, PARSE_MODE_NONE],
-      ["JOINED_AT", joinedAt, PARSE_MODE_NONE],
-      ["GUILD_ICON", String(guildIcon), PARSE_MODE_NONE],
-      ["DISCORD_ICON", DiscordUtils.logo, PARSE_MODE_NONE],
-      ["MEMBER_ID", userId, PARSE_MODE_NONE],
-      ["USER_AVATAR", String(data.avatar), PARSE_MODE_NONE],
-      ["DISPLAY", data.displayName, PARSE_MODE_NONE],
-      ["MESSAGE_COUNT", String(data.messageCount)],
-    ]);
-  }
+  const metaDataHtml = "";
 
   // Channel creation time
   const channelCreatedAt = militaryTime

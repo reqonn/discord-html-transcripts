@@ -281,6 +281,8 @@ async function buildFullMessage(message, previousMessage, guild, metaData, messa
     const followupSymbol = (referenceHtml || interactionHtml) ? "<div class='chatlog__followup-symbol'></div>" : "";
     const defaultTimestamp = formatDefaultTimestamp(message.createdAt, militaryTime);
 
+    const isoTimestamp = new Date(message.createdAt).toISOString();
+
     html += await fillOut(guild, start_message, [
       ["REFERENCE_SYMBOL", followupSymbol, PARSE_MODE_NONE],
       ["REFERENCE", referenceHtml || interactionHtml, PARSE_MODE_NONE],
@@ -293,6 +295,7 @@ async function buildFullMessage(message, previousMessage, guild, metaData, messa
       ["BOT_TAG", isBot, PARSE_MODE_NONE],
       ["TIMESTAMP", createdAt],
       ["DEFAULT_TIMESTAMP", defaultTimestamp, PARSE_MODE_NONE],
+      ["ISO_TIMESTAMP", isoTimestamp, PARSE_MODE_NONE],
       ["MESSAGE_ID", String(message.id)],
       ["MESSAGE_CONTENT", contentHtml, PARSE_MODE_NONE],
       ["EMBEDS", embedsHtml, PARSE_MODE_NONE],
@@ -304,6 +307,8 @@ async function buildFullMessage(message, previousMessage, guild, metaData, messa
     const timeParts = createdAt.split(/\s+/);
     const shortTime = timeParts.length >= 5 ? timeParts.slice(4).join(" ") : createdAt;
 
+    const isoTimestampFollow = new Date(message.createdAt).toISOString();
+
     html += await fillOut(guild, message_body, [
       ["MESSAGE_ID", String(message.id)],
       ["MESSAGE_CONTENT", contentHtml, PARSE_MODE_NONE],
@@ -312,6 +317,7 @@ async function buildFullMessage(message, previousMessage, guild, metaData, messa
       ["COMPONENTS", componentsHtml, PARSE_MODE_NONE],
       ["EMOJI", reactionsHtml, PARSE_MODE_NONE],
       ["TIMESTAMP", createdAt, PARSE_MODE_NONE],
+      ["ISO_TIMESTAMP", isoTimestampFollow, PARSE_MODE_NONE],
       ["TIME", shortTime, PARSE_MODE_NONE],
     ]);
   }

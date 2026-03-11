@@ -1223,78 +1223,31 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
             color: #fff;
         }
 
-        .meta-popout {
-            position: absolute;
-            z-index: 6969;
-            background-color: #292b2f;
-            box-shadow:
-                0 2px 10px 0 rgb(0 0 0 / 20%),
-                0 0 0 1px rgb(32 34 37 / 60%);
-            width: 280px;
-            border-radius: 5px;
-            overflow: hidden;
-            transform: scale(0);
-            transform-origin: top left;
-        }
-
-        .meta-popout img {
-            height: 16px;
-            width: 16px;
-        }
-
-        .meta__img-border {
-            border-radius: 50%;
-        }
-
-        .meta-popout.mounted {
-            transform: scale(1);
-            transition: transform .3 ease-in-out;;
-        }
-
-        .meta__divider {
-            height: 4px;
-            width: 4px;
-            border-radius: 50%;
-            background-color: #4f545c;
-        }
-
-        .meta__divider-2 {
-            margin: 5px 12px 10px;
-            height: 1px;
-            background-color: #4f545c;
-        }
-
         .meta__header {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             background-color: #202225;
-            padding-top: 10px;
+            padding: 16px 16px 0;
         }
 
         .meta__header img {
             user-select: none;
             border-radius: 50%;
-            margin-bottom: 10px;
+            margin-bottom: -24px;
             position: relative;
             width: 80px;
             height: 80px;
+            border: 6px solid #292b2f;
+            background-color: #202225;
         }
 
         .meta__details {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
+            gap: 2px;
             padding-bottom: 7px;
-        }
-
-        .meta__display-name {
-            font-weight: 500;
-            color: #fff;
-            opacity: 0.9;
-            text-overflow: ellipsis;
-            overflow: hidden;
-            font-size: 12px;
         }
 
         .meta__user {
@@ -1304,21 +1257,11 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
             overflow: hidden;
         }
 
-        .meta__discriminator {
-            font-weight: 500;
-            color: #fff;
-            opacity: .6;
-        }
-
-        .meta-popout .meta__header .bot {
-            margin-left: 1ch;
-        }
-
         .meta__description {
-            padding: 10px;
+            padding: 16px;
             background-color: #18191c;
             margin: 10px;
-            border-radius: 5%;
+            border-radius: 8px;
         }
 
         .meta__field {
@@ -1340,6 +1283,8 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
             align-items: center;
             display: flex;
             column-gap: 6px;
+            color: #dcddde;
+            flex-wrap: wrap;
         }
 
         .meta__support {
@@ -2006,6 +1951,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
 <div id="context-menu">
     <div class="item" data-action="copy-text">Copy text</div>
     <div class="item" data-action="copy-message-id">Copy message id</div>
+    <div class="item" data-action="copy-user-id">Copy user id</div>
 </div>
 
 <div id="summary-popout" class="summary-popout">
@@ -2039,55 +1985,75 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         {{SD}}
     </div>
 </div>
-{{META_DATA}}
-
 <script>
-    
-    let metaPopout = undefined
-    const contextMenu = document.getElementById("context-menu");
-    const contextMenuItems = contextMenu ? contextMenu.querySelectorAll(".item") : [];
-    const scope = document.querySelector("body");
-    const messages = document.getElementsByClassName("chatlog__message-container")
-    let messageID = ""
+    const contextMenu = document.getElementById('context-menu');
+    const scope = document.querySelector('body');
+    const messages = document.getElementsByClassName('chatlog__message-container');
+    const summaryPopout = document.getElementById('summary-popout');
+    const mainScroll = document.querySelector('.main');
+    let messageID = '';
+    let contextTargetType = 'message';
+    let contextTargetId = '';
+
+    const contextMenuItems = contextMenu ? contextMenu.querySelectorAll('.item') : [];
+
     const getMessageText = (id) => {
         const container = document.getElementById('chatlog__message-container-' + id);
         const content = container ? container.querySelector('.chatlog__content') : null;
-        return content && content.innerText ? content.innerText.trim() : "";
-    }
+        if (!content) return '';
+
+        const text = content.innerText ? content.innerText.trim() : '';
+        const mediaUrls = [...content.querySelectorAll('img[src], a[href]')]
+            .map((node) => node.getAttribute('href') || node.getAttribute('src') || '')
+            .filter((url) => /^https?:\/\//i.test(url) || /^data:image\//i.test(url));
+
+        return [text, ...mediaUrls].filter(Boolean).join('\n');
+    };
+
+    const updateContextMenuState = () => {
+        for (const item of contextMenuItems) {
+            const action = item.dataset.action;
+            const showForMessage = contextTargetType === 'message' && (action === 'copy-text' || action === 'copy-message-id');
+            const showForUser = contextTargetType === 'user' && action === 'copy-user-id';
+            item.style.display = showForMessage || showForUser ? 'flex' : 'none';
+        }
+    };
 
     const copyContextValue = (action) => {
-        if (action === "copy-text") {
+        if (action === 'copy-text') {
             const text = getMessageText(messageID);
-            if (text) navigator.clipboard.writeText(text)
+            if (text) navigator.clipboard.writeText(text);
             return;
         }
 
-        if (action === "copy-message-id" && messageID) {
-            navigator.clipboard.writeText(messageID)
+        if (action === 'copy-message-id' && messageID) {
+            navigator.clipboard.writeText(messageID);
+            return;
         }
-    }
+
+        if (action === 'copy-user-id' && contextTargetId) {
+            navigator.clipboard.writeText(contextTargetId);
+        }
+    };
+
     const normalisePosition = (mouseX, mouseY, type) => {
-        if (type == "context") {
-            maxWidth = contextMenu.clientWidth
-            maxHeight = contextMenu.clientHeight
-        } else if (type == "user") {
-            maxWidth = metaPopout.clientWidth
-            maxHeight = metaPopout.clientHeight
+        let maxWidth = 0;
+        let maxHeight = 0;
+
+        if (type === 'context' && contextMenu) {
+            maxWidth = contextMenu.clientWidth;
+            maxHeight = contextMenu.clientHeight;
         }
 
-        let {
-            left: scopeOffsetX,
-            top: scopeOffsetY,
-        } = scope.getBoundingClientRect()
+        let { left: scopeOffsetX, top: scopeOffsetY } = scope.getBoundingClientRect();
         scopeOffsetX = scopeOffsetX < 0 ? 0 : scopeOffsetX;
-        scopeOffsetY = scopeOffsetY < 0 ? 0 : scopeOffsetY
+        scopeOffsetY = scopeOffsetY < 0 ? 0 : scopeOffsetY;
         const scopeX = mouseX - scopeOffsetX;
-        const scopeY = mouseY - scopeOffsetY
-
-        const outOfBoundsOnX = scopeX + maxWidth > scope.clientWidth
-        const outOfBoundsOnY = scopeY + maxHeight > scope.clientHeight
+        const scopeY = mouseY - scopeOffsetY;
+        const outOfBoundsOnX = scopeX + maxWidth > scope.clientWidth;
+        const outOfBoundsOnY = scopeY + maxHeight > scope.clientHeight;
         let normalizedX = mouseX;
-        let normalizedY = mouseY
+        let normalizedY = mouseY;
 
         if (outOfBoundsOnX) {
             normalizedX = scopeOffsetX + scope.clientWidth - maxWidth;
@@ -2098,14 +2064,14 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         }
 
         return { normalizedX, normalizedY };
-    }
+    };
 
-    scope.addEventListener("contextmenu", (e) => {
-        event.preventDefault()
+    scope.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
         if (e.target.offsetParent != contextMenu) {
-          contextMenu.classList.remove("visible");
+            contextMenu.classList.remove('visible');
         }
-    })
+    });
 
     const allLinks = document.querySelectorAll('a[href]');
     for (const link of allLinks) {
@@ -2115,111 +2081,109 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         link.setAttribute('rel', 'noopener noreferrer');
     }
 
-    var openContextMenu = function() {
-        const { clientX: mouseX, clientY: mouseY } = event
-        const { normalizedX, normalizedY } = normalisePosition(mouseX, mouseY, "context")
+    const userTriggerSelector = '.chatlog__author-name, .chatlog__followup-author, .chatlog__followup-avatar, .chatlog__avatar';
+    const getUserTrigger = (target) => target?.closest ? target.closest(userTriggerSelector) : null;
+    const getMessageContainer = (target) => target?.closest ? target.closest('.chatlog__message-container') : null;
 
-        contextMenu.classList.remove("visible")
+    const openMessageContextMenu = function(event) {
+        contextTargetType = 'message';
+        contextTargetId = '';
+        messageID = this.getAttribute('data-message-id') || '';
+        const { normalizedX, normalizedY } = normalisePosition(event.clientX, event.clientY, 'context');
+
+        contextMenu.classList.remove('visible');
         contextMenu.style.left = `${normalizedX}px`;
-        contextMenu.style.top = `${normalizedY}px`
+        contextMenu.style.top = `${normalizedY}px`;
+        updateContextMenuState();
 
         setTimeout(() => {
-            contextMenu.classList.add("visible");
-        })
-        messageID = this.getAttribute("data-message-id");
+            contextMenu.classList.add('visible');
+        });
+    };
+
+    const openUserContextMenu = function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        contextTargetType = 'user';
+        contextTargetId = this.getAttribute('data-user-id') || '';
+        const { normalizedX, normalizedY } = normalisePosition(event.clientX, event.clientY, 'context');
+
+        contextMenu.classList.remove('visible');
+        contextMenu.style.left = `${normalizedX}px`;
+        contextMenu.style.top = `${normalizedY}px`;
+        updateContextMenuState();
+
+        setTimeout(() => {
+            contextMenu.classList.add('visible');
+        });
+    };
+
+    window.openUserContextMenuByElement = function(event, element) {
+        if (!element) return false;
+        openUserContextMenu.call(element, event);
+        return false;
+    };
+
+    for (let i = 0; i < messages.length; i++) {
+        messages[i].addEventListener('contextmenu', openMessageContextMenu);
     }
 
-    for (var i = 0; i < messages.length; i++) {
-        messages[i].addEventListener("contextmenu", openContextMenu)
-    }
-
-    for (const item of contextMenuItems) {
-        item.addEventListener("click", (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            copyContextValue(item.dataset.action)
-            contextMenu.classList.remove("visible");
-        })
-    }
-
-    scope.addEventListener("click", (e) => {
-        if (e.target.offsetParent != contextMenu) {
-          contextMenu.classList.remove("visible");
+    document.addEventListener('contextmenu', (event) => {
+        const trigger = getUserTrigger(event.target);
+        if (trigger) {
+            openUserContextMenu.call(trigger, event);
+            return;
         }
 
-        if (metaPopout && e.target.offsetParent != metaPopout) {
-            metaPopout.classList.remove("mounted")
-        }
-
-        if (e.target.offsetParent != summaryPopout) {
-            summaryPopout.classList.remove("visible")
-        }
-    })
-
-    mainScroll = document.querySelector('.main')
-    mainScroll.addEventListener('scroll', (e) => {
-        if (e.target.offsetParent != contextMenu) {
-            contextMenu.classList.remove("visible");
-        }
-
-        if (metaPopout && e.target.offsetParent != metaPopout) {
-            metaPopout.classList.remove("mounted")
+        const container = getMessageContainer(event.target);
+        if (container) {
+            openMessageContextMenu.call(container, event);
         }
     });
 
-    
-    const summaryPopout = document.getElementById('summary-popout')
+    for (const item of contextMenuItems) {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            copyContextValue(item.dataset.action);
+            contextMenu.classList.remove('visible');
+        });
+    }
 
-    window.onload = function() {
-        var author_name = document.getElementsByClassName('chatlog__author-name');
-        var followup_author =document.getElementsByClassName('chatlog__followup-author');
-        var followup_avatar = document.getElementsByClassName("chatlog__followup-avatar");
-        var avatar = document.getElementsByClassName("chatlog__avatar");
-        const element_select = [...author_name, ...followup_author, ...followup_avatar, ...avatar]
-
-        for(var i = 0; i < element_select.length; i++) {
-            var element = element_select[i];
-            element.onclick = function() {
-                authorID = this.getAttribute("data-user-id");
-
-                if (metaPopout) {
-                    metaPopout.classList.remove('mounted');
-                }
-
-                metaPopout = document.getElementById('meta-popout-' + authorID);
-
-                const subtractX = document.querySelector('.main').scrollLeft
-                const subtractY = document.querySelector('.main').scrollTop
-
-                const elementX = this.offsetLeft + this.offsetWidth + 10 - subtractX
-                const elementY = this.offsetTop - subtractY
-
-                const { normalizedX, normalizedY } = normalisePosition(elementX, elementY, "user")
-
-                metaPopout.style.left = `${normalizedX}px`;
-                metaPopout.style.top = `${normalizedY}px`;
-
-                setTimeout(() => {
-                    metaPopout.classList.add("mounted")
-                });
-            }
+    scope.addEventListener('click', (e) => {
+        if (e.target.offsetParent != contextMenu) {
+            contextMenu.classList.remove('visible');
         }
 
-        var summaryButton = document.getElementById('summary-button');
+        if (!summaryPopout.contains(e.target)) {
+            summaryPopout.classList.remove('visible');
+        }
+    });
+
+    mainScroll.addEventListener('scroll', (e) => {
+        if (e.target.offsetParent != contextMenu) {
+            contextMenu.classList.remove('visible');
+        }
+
+    });
+
+    updateContextMenuState();
+
+    window.onload = function() {
+        const summaryButton = document.getElementById('summary-button');
         summaryButton.onclick = function() {
-            const elementX = this.offsetLeft - 110
-            const elementY = this.offsetTop + 30
+            const elementX = this.offsetLeft - 110;
+            const elementY = this.offsetTop + 30;
 
             summaryPopout.style.left = `${elementX}px`;
             summaryPopout.style.top = `${elementY}px`;
 
             setTimeout(() => {
-                summaryPopout.classList.add("visible")
+                summaryPopout.classList.add('visible');
             });
-        }
-    }
+        };
+    };
 
-    
     tippy('.chatlog__timestamp', {
         placement: 'top',
         animation: 'fade',
@@ -2241,7 +2205,6 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         theme: 'disc',
     });
 
-    // Timestamps: Tooltips
     tippy('.unix-timestamp', {
         placement: 'top',
         animation: 'fade',
