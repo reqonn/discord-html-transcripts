@@ -1918,7 +1918,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
             }
         }
 
-        <!--  Spoiler (|| Spoiler ||)  -->
+        // Spoiler (|| Spoiler ||)
         function showSpoiler(event, element) {
             if (element && element.classList.contains('spoiler--hidden')) {
                 event.preventDefault();
@@ -1926,7 +1926,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
             }
         }
 
-        <!--  Menu Dropdown (Selectmenu)  -->
+        // Menu Dropdown (Selectmenu)
         function showDropdown(dropdownID) {
           const button = document.getElementById("dropdownButton" + dropdownID);
           const menuContent = document.getElementById("dropdownMenuContent" + dropdownID);
@@ -1942,7 +1942,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
           }
         }
 
-        <!--  Component Spoiler (click to reveal thumbnails/media) -->
+        
         document.addEventListener('DOMContentLoaded', () => {
           const spoilerTargets = document.querySelectorAll(
             '.chatlog__component-thumbnail.chatlog__component-spoiler, ' +
@@ -1963,7 +1963,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
           });
         });
 
-        <!--  Code Block Markdown (```lang```) -->
+        
         document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.pre--multiline').forEach((block) => {
                 hljs.highlightBlock(block);
@@ -2004,7 +2004,8 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
 </div>
 
 <div id="context-menu">
-    <div class="item">Copy Message ID</div>
+    <div class="item" data-action="copy-text">Copy text</div>
+    <div class="item" data-action="copy-message-id">Copy message id</div>
 </div>
 
 <div id="summary-popout" class="summary-popout">
@@ -2041,12 +2042,30 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
 {{META_DATA}}
 
 <script>
-    <!-- Right Click - Copy ID -->
+    
     let metaPopout = undefined
     const contextMenu = document.getElementById("context-menu");
+    const contextMenuItems = contextMenu ? contextMenu.querySelectorAll(".item") : [];
     const scope = document.querySelector("body");
     const messages = document.getElementsByClassName("chatlog__message-container")
     let messageID = ""
+    const getMessageText = (id) => {
+        const container = document.getElementById('chatlog__message-container-' + id);
+        const content = container ? container.querySelector('.chatlog__content') : null;
+        return content && content.innerText ? content.innerText.trim() : "";
+    }
+
+    const copyContextValue = (action) => {
+        if (action === "copy-text") {
+            const text = getMessageText(messageID);
+            if (text) navigator.clipboard.writeText(text)
+            return;
+        }
+
+        if (action === "copy-message-id" && messageID) {
+            navigator.clipboard.writeText(messageID)
+        }
+    }
     const normalisePosition = (mouseX, mouseY, type) => {
         if (type == "context") {
             maxWidth = contextMenu.clientWidth
@@ -2088,6 +2107,14 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         }
     })
 
+    const allLinks = document.querySelectorAll('a[href]');
+    for (const link of allLinks) {
+        const href = link.getAttribute('href') || '';
+        if (!href || href.startsWith('#') || href.startsWith('javascript:')) continue;
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+    }
+
     var openContextMenu = function() {
         const { clientX: mouseX, clientY: mouseY } = event
         const { normalizedX, normalizedY } = normalisePosition(mouseX, mouseY, "context")
@@ -2106,12 +2133,18 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         messages[i].addEventListener("contextmenu", openContextMenu)
     }
 
+    for (const item of contextMenuItems) {
+        item.addEventListener("click", (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            copyContextValue(item.dataset.action)
+            contextMenu.classList.remove("visible");
+        })
+    }
+
     scope.addEventListener("click", (e) => {
         if (e.target.offsetParent != contextMenu) {
           contextMenu.classList.remove("visible");
-        } else {
-            navigator.clipboard.writeText(messageID)
-            contextMenu.classList.remove("visible");
         }
 
         if (metaPopout && e.target.offsetParent != metaPopout) {
@@ -2127,9 +2160,6 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
     mainScroll.addEventListener('scroll', (e) => {
         if (e.target.offsetParent != contextMenu) {
             contextMenu.classList.remove("visible");
-        } else {
-            navigator.clipboard.writeText(messageID)
-            contextMenu.classList.remove("visible");
         }
 
         if (metaPopout && e.target.offsetParent != metaPopout) {
@@ -2137,7 +2167,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         }
     });
 
-    <!-- User Dialog -->
+    
     const summaryPopout = document.getElementById('summary-popout')
 
     window.onload = function() {
@@ -2189,7 +2219,7 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         }
     }
 
-    <!-- Timestamps: Tooltips -->
+    
     tippy('.chatlog__timestamp', {
         placement: 'top',
         animation: 'fade',
@@ -2211,11 +2241,13 @@ Press generate link to generate the transcript HTML link that is valid for 7 day
         theme: 'disc',
     });
 
-    <!-- Timestamps: Tooltips -->
+    // Timestamps: Tooltips
     tippy('.unix-timestamp', {
         placement: 'top',
         animation: 'fade',
-        content: (reference) => reference.getAttribute('data-timestamp'),
+        content: (reference) => {
+            return reference.getAttribute('data-timestamp');
+        },
         theme: 'disc',
     });
 
