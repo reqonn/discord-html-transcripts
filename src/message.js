@@ -2,7 +2,7 @@
 import { MessageType } from "discord.js";
 import { fillOut, escapeHtml } from "./fill-out.js";
 import { DiscordUtils } from "./utils.js";
-import { buildAttachment, buildEmbed, buildReaction, buildComponent } from "./assets.js";
+import { buildAttachment, buildEmbed, buildGifvEmbed, buildReaction, buildComponent } from "./assets.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_MARKDOWN, PARSE_MODE_REFERENCE,
   start_message, end_message, message_body, message_content,
@@ -243,6 +243,11 @@ async function buildFullMessage(message, previousMessage, guild, metaData, messa
 
   for (const e of message.embeds || []) {
     if (isDuplicateImageEmbed(e, attachmentUrls)) continue;
+    const embedType = e.data?.type;
+    if (embedType === "gifv" || embedType === "video") {
+      embedsHtml += await buildGifvEmbed(e, guild);
+      continue;
+    }
     embedsHtml += await buildEmbed(e, guild);
   }
 

@@ -71,6 +71,7 @@ export const custom_emoji_template = read("reaction/custom_emoji.html");
 
 // Attachments
 export const img_attachment = read("attachment/image.html");
+export const gifv_attachment = read("attachment/gifv.html");
 export const msg_attachment = read("attachment/message.html");
 export const audio_attachment = read("attachment/audio.html");
 export const video_attachment = read("attachment/video.html");

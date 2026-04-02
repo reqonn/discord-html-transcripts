@@ -11,11 +11,17 @@ import {
 
 const IMAGE_TIMEOUT_MS = 5000;
 const MAX_CONCURRENT_DOWNLOADS = 10;
-const MAX_INLINE_IMAGE_COUNT = 24;
-const MAX_INLINE_IMAGE_BYTES = 2 * 1024 * 1024;
-const MAX_INLINE_IMAGE_TOTAL_BYTES = 8 * 1024 * 1024;
 
-const IMAGE_URL_RE = /https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/[^"'\s>]+/gi;
+const MAX_CONTENT_IMAGE_COUNT = 24;
+const MAX_CONTENT_IMAGE_BYTES = 2 * 1024 * 1024;
+const MAX_CONTENT_IMAGE_TOTAL_BYTES = 8 * 1024 * 1024;
+
+const MAX_AVATAR_BYTES = 100 * 1024;
+const MAX_AVATAR_TOTAL_BYTES = 2 * 1024 * 1024;
+const AVATAR_EMBED_SIZE = 64;
+
+const AVATAR_URL_RE = /https:\/\/cdn\.discordapp\.com\/(?:avatars|icons|embed\/avatars|role-icons|guilds\/\d+\/users\/\d+\/avatars)\/[^"'\s>]+/gi;
+const CONTENT_IMAGE_URL_RE = /https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/[^"'\s>]+/gi;
 
 function getContentType(ext) {
   const map = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp" };
@@ -34,20 +40,29 @@ function replaceImageSrc(html, url, dataUrl) {
   );
 }
 
-async function downloadAsBase64(url) {
+function forceSize(url, size) {
+  try {
+    const u = new URL(url);
+    u.searchParams.set("size", String(size));
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+async function downloadAsBase64(url, maxBytes = MAX_CONTENT_IMAGE_BYTES) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), IMAGE_TIMEOUT_MS);
   try {
     const res = await fetch(url, { signal: controller.signal });
     if (!res.ok) return null;
     const contentLength = Number(res.headers.get("content-length") || 0);
-    if (contentLength && contentLength > MAX_INLINE_IMAGE_BYTES) return null;
+    if (contentLength && contentLength > maxBytes) return null;
     const buffer = Buffer.from(await res.arrayBuffer());
-    if (!buffer.length || buffer.length > MAX_INLINE_IMAGE_BYTES) return null;
+    if (!buffer.length || buffer.length > maxBytes) return null;
     const ext = url.split("?")[0].split(".").pop().toLowerCase();
     const mime = getContentType(ext);
     return {
-      url,
       bytes: buffer.length,
       dataUrl: `data:${mime};base64,${buffer.toString("base64")}`,
     };
@@ -58,30 +73,62 @@ async function downloadAsBase64(url) {
   }
 }
 
-async function embedImages(html) {
-  const urlList = [...new Set(html.match(IMAGE_URL_RE) ?? [])].slice(0, MAX_INLINE_IMAGE_COUNT);
-  if (!urlList.length) return html;
+async function embedAvatars(html) {
+  const urls = [...new Set(html.match(AVATAR_URL_RE) ?? [])];
+  if (!urls.length) return html;
 
-  const replacements = [];
-  let totalInlinedBytes = 0;
+  let totalBytes = 0;
+  let updatedHtml = html;
 
-  for (let i = 0; i < urlList.length; i += MAX_CONCURRENT_DOWNLOADS) {
-    const batch = urlList.slice(i, i + MAX_CONCURRENT_DOWNLOADS);
-    const results = await Promise.all(batch.map((url) => downloadAsBase64(url)));
+  for (let i = 0; i < urls.length; i += MAX_CONCURRENT_DOWNLOADS) {
+    const batch = urls.slice(i, i + MAX_CONCURRENT_DOWNLOADS);
+    const results = await Promise.all(batch.map(async (originalUrl) => {
+      const smallUrl = forceSize(originalUrl, AVATAR_EMBED_SIZE);
+      const result = await downloadAsBase64(smallUrl, MAX_AVATAR_BYTES);
+      return result ? { originalUrl, ...result } : null;
+    }));
+
     for (const result of results) {
       if (!result) continue;
-      if (totalInlinedBytes + result.bytes > MAX_INLINE_IMAGE_TOTAL_BYTES) continue;
-      replacements.push(result);
-      totalInlinedBytes += result.bytes;
+      if (totalBytes + result.bytes > MAX_AVATAR_TOTAL_BYTES) continue;
+      updatedHtml = replaceImageSrc(updatedHtml, result.originalUrl, result.dataUrl);
+      totalBytes += result.bytes;
     }
   }
 
+  return updatedHtml;
+}
+
+async function embedContentImages(html) {
+  const allUrls = [...new Set(html.match(CONTENT_IMAGE_URL_RE) ?? [])];
+  const avatarPattern = new RegExp(AVATAR_URL_RE.source, "i");
+  const urls = allUrls
+    .filter((u) => !avatarPattern.test(u))
+    .slice(0, MAX_CONTENT_IMAGE_COUNT);
+
+  if (!urls.length) return html;
+
+  let totalBytes = 0;
   let updatedHtml = html;
-  for (const { url, dataUrl } of replacements) {
-    updatedHtml = replaceImageSrc(updatedHtml, url, dataUrl);
+
+  for (let i = 0; i < urls.length; i += MAX_CONCURRENT_DOWNLOADS) {
+    const batch = urls.slice(i, i + MAX_CONCURRENT_DOWNLOADS);
+    const results = await Promise.all(batch.map((url) => downloadAsBase64(url)));
+    for (const result of results) {
+      if (!result) continue;
+      if (totalBytes + result.bytes > MAX_CONTENT_IMAGE_TOTAL_BYTES) continue;
+      updatedHtml = replaceImageSrc(updatedHtml, batch[results.indexOf(result)], result.dataUrl);
+      totalBytes += result.bytes;
+    }
   }
 
   return updatedHtml;
+}
+
+async function embedImages(html) {
+  html = await embedAvatars(html);
+  html = await embedContentImages(html);
+  return html;
 }
 
 /**

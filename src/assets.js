@@ -6,7 +6,7 @@ import { DiscordUtils } from "./utils.js";
 import {
   PARSE_MODE_NONE, PARSE_MODE_MARKDOWN, PARSE_MODE_EMBED,
   PARSE_MODE_SPECIAL_EMBED, PARSE_MODE_EMOJI,
-  img_attachment, msg_attachment, audio_attachment, video_attachment,
+  img_attachment, gifv_attachment, msg_attachment, audio_attachment, video_attachment,
   embed_body, embed_title, embed_description, embed_field, embed_field_inline,
   embed_footer, embed_footer_icon, embed_image, embed_thumbnail, embed_author, embed_author_icon,
   emoji_template, custom_emoji_template,
@@ -103,6 +103,26 @@ export async function buildAttachment(attachment, guild) {
   }
 
   return html;
+}
+
+// ─── Gifv Embed (Tenor / Giphy) ───────────────────────────────────────────────
+
+export async function buildGifvEmbed(embed, guild) {
+  const videoUrl = embed.video?.proxyURL || embed.video?.url;
+  const thumbUrl = embed.thumbnail?.proxyURL || embed.thumbnail?.url;
+
+  if (videoUrl) {
+    return fillOut(guild, gifv_attachment, [
+      ["ATTACH_URL", videoUrl, PARSE_MODE_NONE],
+    ]);
+  }
+  if (thumbUrl) {
+    return fillOut(guild, img_attachment, [
+      ["ATTACH_URL", thumbUrl, PARSE_MODE_NONE],
+      ["ATTACH_URL_THUMB", thumbUrl, PARSE_MODE_NONE],
+    ]);
+  }
+  return "";
 }
 
 // ─── Embed ────────────────────────────────────────────────────────────────────
